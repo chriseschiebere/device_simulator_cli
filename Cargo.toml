@@ -1,0 +1,10 @@
+[package]
+name = "device_simulator_cli"
+version = "0.1.0"
+authors = ["Christian Farias <chris@geeny.io>"]
+
+[dependencies]
+hub-sdk = "0.4.3"
+geeny-api = "0.3.0"
+uuid = "0.5.1"
+rpassword = "2.0.0"
