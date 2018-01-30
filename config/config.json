@@ -1,0 +1,16 @@
+{
+    "user": "chris@geeny.io",
+    "thing": {
+        "name": "alpha",
+        "serial_number": "omega",
+        "thing_type": "877827cc-0c78-4e55-80fe-2941479c681a"
+    },
+    "message": {
+        "topic": "human_message",
+        "content": "Hello, world!"
+    },
+    "simulation": {
+        "period_s": 1,
+        "duration_s": 10
+    }
+}

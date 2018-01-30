@@ -2,20 +2,29 @@ extern crate hub_sdk;
 extern crate geeny_api;
 extern crate uuid;
 extern crate rpassword;
+extern crate serde;
+extern crate serde_json;
+
+#[macro_use]
+extern crate serde_derive;
 
 use hub_sdk::{HubSDK, HubSDKConfig};
 use hub_sdk::services::PartialThingMessage;
 
-use geeny_api::ThingsApi;
-use geeny_api::ConnectApi;
+use geeny_api::{ThingsApi, ConnectApi};
 use geeny_api::models::ThingRequest;
 
 use uuid::Uuid;
 
 use std::path::PathBuf;
 
+use std::io;
+use std::io::{Read, Write};
+
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+use std::fs::File;
 
 fn main() {
     // Start
@@ -38,34 +47,73 @@ fn main() {
     
     let hub_sdk = HubSDK::new(sdk_cfg);
     
+    // Load configuration (from the configuration file)
+    
+    let mut config_file = File::open("./config/config.json")
+        .expect("Configuration file not found.");
+    let mut config = String::new();
+    config_file.read_to_string(&mut config)
+        .expect("Unexpected error.");
+    let config = config.trim();
+    // Only for debugging purposes
+    //println!("Configuration:\n\r{}\n\r", config);
+    
+    #[derive(Deserialize, Debug)]
+    struct Thing {
+        name: String,
+        serial_number: String,
+        thing_type: String,
+    }
+    
+    #[derive(Deserialize, Debug)]
+    struct Message {
+        topic: String,
+        content: String,
+    }
+    
+    #[derive(Deserialize, Debug)]
+    struct Simulation {
+        period_s: u64,
+        duration_s: u64,
+    }
+    
+    #[derive(Deserialize, Debug)]
+    struct Config {
+        user: String,
+        thing: Thing,
+        message: Message,
+        simulation: Simulation,
+    }
+    
+    let config: Config = serde_json::from_str(config).unwrap();
+    // Only for debugging purposes
+    println!("Loaded configuration:\n\r{:#?}\n\r", config);
+    
     // Log in
     
-    let username = String::from("chris@geeny.io");
-    println!("Password?");
+    println!("Username: {}", config.user);
+    print!("Password: ");
+    io::stdout().flush().unwrap();
     let password = rpassword::read_password()
         .expect("Unexpected error.");
-    println!("Password provided.\n");
+    let password = password.trim();
     
-    hub_sdk.login(&username, &password)
+    println!();
+    
+    // TODO: Check access token and save unnecessary log-ins!
+    hub_sdk.login(&config.user, &password)
         .expect("Failed to log in.");
+    println!("User \"{}\" logged in.\n\r", config.user);
     
-    println!("{} logged in.\n\r", username);
-    
-    // Create a Thing
-    
-    let name = "alpha";
-    let serial_number = "omega";
-    let thing_type = Uuid::parse_str("877827cc-0c78-4e55-80fe-2941479c681a")
-        .unwrap();
+    // Register Thing to the Cloud
     
     let thing = ThingRequest {
-        name: String::from(name),
-        serial_number: String::from(serial_number),
-        thing_type: thing_type,
+        name: config.thing.name,
+        serial_number: config.thing.serial_number.clone(),
+        thing_type: Uuid::parse_str(&config.thing.thing_type).unwrap(),
     };
-    
     // TODO: Better result management?
-    // Is it possible to check if Thing already exists?
+    // Is it possible to check if the desired Thing already exists?
     match hub_sdk.create_thing(thing) {
         Ok(_) => println!("Thing created.\n\r"),
         Err(_) => println!("No new Thing created.\n\r"),
@@ -73,54 +121,34 @@ fn main() {
     
     // Send messages to the Cloud
     
-    let topic = "human_message";
-    let contents = [
-        "Hello, world!",
-        "Hallo, Welt!",
-        "¡Hola, mundo!",
+    let messages = [
+        PartialThingMessage {
+            topic: config.message.topic,
+            msg: config.message.content,
+        },
     ];
-    let period = Duration::from_secs(1);
+    
+    let period = Duration::from_secs(config.simulation.period_s);
+    let duration = Duration::from_secs(config.simulation.duration_s);
     
     println!("Messages sent:");
+    thread::sleep(Duration::from_secs(1));
     
-    thread::sleep(period);
-    let messages = [
-        PartialThingMessage {
-            topic: String::from(topic),
-            msg: String::from(contents[0]),
-        },
-    ];
-    match hub_sdk.send_messages(&serial_number, &messages) {
-        Ok(_) => println!("{}", messages[0].msg),
-        Err(_) => println!("Failed to send messages to the Cloud."),
-    }
+    let start = Instant::now();
     
-    thread::sleep(period);
-    let messages = [
-        PartialThingMessage {
-            topic: String::from(topic),
-            msg: String::from(contents[1]),
-        },
-    ];
-    match hub_sdk.send_messages(&serial_number, &messages) {
-        Ok(_) => println!("{}", messages[0].msg),
-        Err(_) => println!("Failed to send messages to the Cloud."),
-    }
-    
-    thread::sleep(period);
-    let messages = [
-        PartialThingMessage {
-            topic: String::from(topic),
-            msg: String::from(contents[2]),
-        },
-    ];
-    match hub_sdk.send_messages(&serial_number, &messages) {
-        Ok(_) => println!("{}", messages[0].msg),
-        Err(_) => println!("Failed to send messages to the Cloud."),
+    loop {
+        match hub_sdk.send_messages(&config.thing.serial_number, &messages) {
+            Ok(_) => println!("{}", messages[0].msg),
+            Err(_) => println!("Failed to send messages to the Cloud."),
+        }
+        thread::sleep(period);
+        
+        if start.elapsed() >= duration {
+            break;
+        }
     }
     
     // Finish
     
-    thread::sleep(Duration::from_secs(1));
     println!("\n\r*** SIMULATION FINISHED ***\n\r");
 }
