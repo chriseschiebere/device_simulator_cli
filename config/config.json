@@ -11,6 +11,6 @@
     },
     "simulation": {
         "period_s": 1,
-        "duration_s": 10
+        "duration_s": 5
     }
 }

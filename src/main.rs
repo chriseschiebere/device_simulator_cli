@@ -49,6 +49,7 @@ fn main() {
     
     // Load configuration (from the configuration file)
     
+    // TODO: Introduce a JSON schema for validation?
     let mut config_file = File::open("./config/config.json")
         .expect("Configuration file not found.");
     let mut config = String::new();
@@ -89,21 +90,28 @@ fn main() {
     // Only for debugging purposes
     println!("Loaded configuration:\n\r{:#?}\n\r", config);
     
-    // Log in
+    // Check user's credentials; authenticate if necessary
     
-    println!("Username: {}", config.user);
-    print!("Password: ");
-    io::stdout().flush().unwrap();
-    let password = rpassword::read_password()
-        .expect("Unexpected error.");
-    let password = password.trim();
+    println!("Checking user's credentials...");
     
-    println!();
+    let (username, valid) = hub_sdk.check_token()
+        .expect("Failed to retrieve authentication information.");
+    if (username == config.user) && (valid == true) {
+        println!("User \"{}\" is already logged in.\n\r", config.user);
+    } else {
+        println!("Username: {}", config.user);
+        print!("Password: ");
+        io::stdout().flush().unwrap();
+        let password = rpassword::read_password()
+            .expect("Unexpected error.");
+        let password = password.trim();
     
-    // TODO: Check access token and save unnecessary log-ins!
-    hub_sdk.login(&config.user, &password)
-        .expect("Failed to log in.");
-    println!("User \"{}\" logged in.\n\r", config.user);
+        println!();
+        
+        hub_sdk.login(&config.user, &password)
+            .expect("Failed to log in.");
+        println!("User \"{}\" logged in.\n\r", config.user);
+    }
     
     // Register Thing to the Cloud
     
