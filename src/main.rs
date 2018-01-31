@@ -143,15 +143,11 @@ fn main() {
     
     let start = Instant::now();
     
-    loop {
+    while start.elapsed() <= duration {
         thread::sleep(period);
         match hub_sdk.send_messages(&config.thing.serial_number, &messages) {
             Ok(_) => println!("{}", messages[0].msg),
             Err(_) => println!("Failed to send messages to the Cloud."),
-        }
-        
-        if start.elapsed() >= duration {
-            break;
         }
     }
     
