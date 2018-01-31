@@ -140,16 +140,15 @@ fn main() {
     let duration = Duration::from_secs(config.simulation.duration_s);
     
     println!("Messages sent:");
-    thread::sleep(Duration::from_secs(1));
     
     let start = Instant::now();
     
     loop {
+        thread::sleep(period);
         match hub_sdk.send_messages(&config.thing.serial_number, &messages) {
             Ok(_) => println!("{}", messages[0].msg),
             Err(_) => println!("Failed to send messages to the Cloud."),
         }
-        thread::sleep(period);
         
         if start.elapsed() >= duration {
             break;
@@ -158,5 +157,6 @@ fn main() {
     
     // Finish
     
+    thread::sleep(Duration::from_secs(1));
     println!("\n\r*** SIMULATION FINISHED ***\n\r");
 }
