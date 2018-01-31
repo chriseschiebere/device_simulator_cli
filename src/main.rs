@@ -60,30 +60,20 @@ fn main() {
     //println!("Configuration:\n\r{}\n\r", config);
     
     #[derive(Deserialize, Debug)]
-    struct Thing {
-        name: String,
-        serial_number: String,
-        thing_type: String,
-    }
-    
-    #[derive(Deserialize, Debug)]
-    struct Message {
-        topic: String,
-        content: String,
-    }
-    
-    #[derive(Deserialize, Debug)]
     struct Simulation {
-        period_s: u64,
-        duration_s: u64,
+        thing_name: String,
+        thing_sn: String,
+        thing_type: String,
+        msg_topic: String,
+        msg_content: String,
+        period_ms: u64,
+        duration_ms: u64,
     }
     
     #[derive(Deserialize, Debug)]
     struct Config {
         user: String,
-        thing: Thing,
-        message: Message,
-        simulation: Simulation,
+        sims: Vec<Simulation>,
     }
     
     let config: Config = serde_json::from_str(config).unwrap();
@@ -116,9 +106,9 @@ fn main() {
     // Register Thing to the Cloud
     
     let thing = ThingRequest {
-        name: config.thing.name,
-        serial_number: config.thing.serial_number.clone(),
-        thing_type: Uuid::parse_str(&config.thing.thing_type).unwrap(),
+        name: config.sims[0].thing_name.clone(),
+        serial_number: config.sims[0].thing_sn.clone(),
+        thing_type: Uuid::parse_str(&config.sims[0].thing_type).unwrap(),
     };
     // TODO: Better result management?
     // Is it possible to check if the desired Thing already exists?
@@ -131,13 +121,13 @@ fn main() {
     
     let messages = [
         PartialThingMessage {
-            topic: config.message.topic,
-            msg: config.message.content,
+            topic: config.sims[0].msg_topic.clone(),
+            msg: config.sims[0].msg_content.clone(),
         },
     ];
     
-    let period = Duration::from_secs(config.simulation.period_s);
-    let duration = Duration::from_secs(config.simulation.duration_s);
+    let period = Duration::from_millis(config.sims[0].period_ms);
+    let duration = Duration::from_millis(config.sims[0].duration_ms);
     
     println!("Messages sent:");
     
@@ -145,7 +135,7 @@ fn main() {
     
     while start.elapsed() <= duration {
         thread::sleep(period);
-        match hub_sdk.send_messages(&config.thing.serial_number, &messages) {
+        match hub_sdk.send_messages(&config.sims[0].thing_sn, &messages) {
             Ok(_) => println!("{}", messages[0].msg),
             Err(_) => println!("Failed to send messages to the Cloud."),
         }

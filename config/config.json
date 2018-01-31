@@ -1,16 +1,23 @@
 {
     "user": "chris@geeny.io",
-    "thing": {
-        "name": "alpha",
-        "serial_number": "omega",
-        "thing_type": "877827cc-0c78-4e55-80fe-2941479c681a"
-    },
-    "message": {
-        "topic": "human_message",
-        "content": "Hello, world!"
-    },
-    "simulation": {
-        "period_s": 1,
-        "duration_s": 5
-    }
+    "sims": [
+        {
+            "thing_name": "alpha",
+            "thing_sn": "omega",
+            "thing_type": "877827cc-0c78-4e55-80fe-2941479c681a",
+            "msg_topic": "human_message",
+            "msg_content": "Hello, world!",
+            "period_ms": 500,
+            "duration_ms": 5000
+        },
+        {
+            "thing_name": "alpha",
+            "thing_sn": "omega",
+            "thing_type": "877827cc-0c78-4e55-80fe-2941479c681a",
+            "msg_topic": "human_message",
+            "msg_content": "Hallo, Welt!",
+            "period_ms": 1000,
+            "duration_ms": 10000
+        }
+    ]
 }
