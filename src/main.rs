@@ -17,17 +17,16 @@ use geeny_api::models::ThingRequest;
 use uuid::Uuid;
 
 use std::path::PathBuf;
-
-use std::io;
-use std::io::{Read, Write};
-
+use std::io::{self, Read, Write, BufWriter};
 use std::thread;
+use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
-
 use std::fs::File;
 
+// TODO: Extract logic from main() and into a function that returns an
+// error/result code.
 fn main() {
-    // Start
+    // START
     
     println!("\n\r*** GEENY DEVICE SIMULATOR STARTED ***\n\r");
     
@@ -59,18 +58,19 @@ fn main() {
     // Only for debugging purposes
     //println!("Configuration:\n\r{}\n\r", config);
     
-    #[derive(Deserialize, Debug)]
+    // TODO: Relocate structure definitions?
+    #[derive(Deserialize, Debug, Clone)]
     struct Simulation {
         thing_name: String,
         thing_sn: String,
-        thing_type: String,
+        thing_type: Uuid,
         msg_topic: String,
         msg_content: String,
         period_ms: u64,
         duration_ms: u64,
     }
     
-    #[derive(Deserialize, Debug)]
+    #[derive(Deserialize, Debug, Clone)]
     struct Config {
         user: String,
         sims: Vec<Simulation>,
@@ -78,7 +78,7 @@ fn main() {
     
     let config: Config = serde_json::from_str(config).unwrap();
     // Only for debugging purposes
-    println!("Loaded configuration:\n\r{:#?}\n\r", config);
+    //println!("Loaded configuration:\n\r{:#?}\n\r", config);
     
     // Check user's credentials; authenticate if necessary
     
@@ -103,46 +103,78 @@ fn main() {
         println!("User \"{}\" logged in.\n\r", config.user);
     }
     
-    // Register Thing to the Cloud
+    // Spawn one thread per simulation; execute all of them in parallel
     
-    let thing = ThingRequest {
-        name: config.sims[0].thing_name.clone(),
-        serial_number: config.sims[0].thing_sn.clone(),
-        thing_type: Uuid::parse_str(&config.sims[0].thing_type).unwrap(),
-    };
-    // TODO: Better result management?
-    // Is it possible to check if the desired Thing already exists?
-    match hub_sdk.create_thing(thing) {
-        Ok(_) => println!("Thing created.\n\r"),
-        Err(_) => println!("No new Thing created.\n\r"),
+    let (tx, rx) = channel();
+    let len = config.sims.len();
+    
+    for i in 0..len {
+        let sim = config.sims[i].clone();
+        let sdk = hub_sdk.clone();
+        let tx = tx.clone();
+        
+        thread::spawn(move || {
+            // Register Thing to the Cloud
+            
+            let thing = ThingRequest {
+                name: sim.thing_name.clone(),
+                serial_number: sim.thing_sn.clone(),
+                thing_type: sim.thing_type,
+            };
+            
+            let mut writer = BufWriter::new(io::stdout());
+            writer.write(b"Attempting to create Thing...\n\r").unwrap();
+            // TODO: Better result management?
+            // Is it possible to check if the desired Thing already exists?
+            match sdk.create_thing(thing) {
+                Ok(_) => {
+                    write!(writer, "Thing \"{:}\" created.",
+                        sim.thing_name).unwrap();
+                }
+                Err(_) => {
+                    write!(writer, "Thing \"{:}\" already exists.",
+                        sim.thing_name).unwrap();
+                }
+            }
+            writer.write(b"\n\r\n\r").unwrap();
+            writer.flush().unwrap();
+            
+            // Send messages to the Cloud
+            
+            let messages = [
+                PartialThingMessage {
+                    topic: sim.msg_topic,
+                    msg: sim.msg_content,
+                },
+            ];
+            let period = Duration::from_millis(sim.period_ms);
+            let duration = Duration::from_millis(sim.duration_ms);
+            
+            let start = Instant::now();
+            while start.elapsed() <= duration {
+                thread::sleep(period);
+                match sdk.send_messages(&sim.thing_sn, &messages) {
+                    Ok(_) =>
+                        println!("Message sent: {}", messages[0].msg),
+                    Err(_) =>
+                        println!("Failed to send messages to the Cloud."),
+                }
+            }
+            
+            // Send "end" signal to the parent thread
+            
+            tx.send(i).unwrap();
+        });
     }
     
-    // Send messages to the Cloud
+    // Wait for "end" signals from all child threads
     
-    let messages = [
-        PartialThingMessage {
-            topic: config.sims[0].msg_topic.clone(),
-            msg: config.sims[0].msg_content.clone(),
-        },
-    ];
-    
-    let period = Duration::from_millis(config.sims[0].period_ms);
-    let duration = Duration::from_millis(config.sims[0].duration_ms);
-    
-    println!("Messages sent:");
-    
-    let start = Instant::now();
-    
-    while start.elapsed() <= duration {
-        thread::sleep(period);
-        match hub_sdk.send_messages(&config.sims[0].thing_sn, &messages) {
-            Ok(_) => println!("{}", messages[0].msg),
-            Err(_) => println!("Failed to send messages to the Cloud."),
-        }
+    for _ in 0..len {
+        rx.recv().unwrap();
     }
     
-    // Finish
+    // FINISH
     
-    thread::sleep(Duration::from_secs(1));
+    thread::sleep(Duration::from_secs(2));
     println!("\n\r*** SIMULATION FINISHED ***\n\r");
 }
