@@ -98,7 +98,7 @@ fn main() {
     
         println!();
         
-        hub_sdk.login(&config.user, &password)
+        hub_sdk.login(&config.user, password)
             .expect("Failed to log in.");
         println!("User \"{}\" logged in.\n\r", config.user);
     }
