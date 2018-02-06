@@ -4,6 +4,7 @@ extern crate uuid;
 extern crate rpassword;
 extern crate serde;
 extern crate serde_json;
+extern crate chrono;
 
 #[macro_use]
 extern crate serde_derive;
@@ -15,6 +16,8 @@ use geeny_api::{ThingsApi, ConnectApi};
 use geeny_api::models::ThingRequest;
 
 use uuid::Uuid;
+
+use chrono::prelude::*;
 
 use std::path::PathBuf;
 use std::io::{self, Read, Write, BufWriter};
@@ -29,6 +32,7 @@ fn main() {
     // START
     
     println!("\n\r*** GEENY DEVICE SIMULATOR STARTED ***\n\r");
+    println!("Start time: {}\n\r", Utc::now());
     
     // Create SDK configuration structure
     
@@ -154,7 +158,8 @@ fn main() {
                 thread::sleep(period);
                 match sdk.send_messages(&sim.thing_sn, &messages) {
                     Ok(_) =>
-                        println!("Message sent: {}", messages[0].msg),
+                        println!("Time: {}. Message sent: {}",
+                            Utc::now(), messages[0].msg),
                     Err(_) =>
                         println!("Failed to send messages to the Cloud."),
                 }
@@ -175,5 +180,6 @@ fn main() {
     // FINISH
     
     thread::sleep(Duration::from_secs(2));
-    println!("\n\r*** SIMULATION FINISHED ***\n\r");
+    println!("Finish time: {}", Utc::now());
+    println!("\n\r*** GEENY DEVICE SIMULATOR FINISHED ***\n\r");
 }
