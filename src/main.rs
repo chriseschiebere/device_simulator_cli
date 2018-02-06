@@ -165,6 +165,38 @@ fn main() {
                 }
             }
             
+            // Retrieve messages received from the Cloud (if any)
+            
+            let mut messages : Vec<PartialThingMessage> = Vec::new();
+            
+            writer.write(b"\n\rRetrieving messages from the Cloud...\n\r")
+                .unwrap();
+            // TODO: Better result management?
+            match sdk.receive_messages(&sim.thing_sn) {
+                Ok(msgs) => {
+                    messages = msgs;
+                    let word = if messages.len() == 1 {
+                        "message"
+                    } else {
+                        "messages"
+                    };
+                    write!(writer, "Time: {}. {} {} received.\n\r",
+                        Utc::now(), messages.len(), word).unwrap();
+                }
+                Err(_) => {
+                    writer.write(b"Failed to retrieve received messages.")
+                        .unwrap();
+                }
+            }
+            
+            for element in &messages {
+                write!(writer, "Message received: {}\n\r", element.msg)
+                    .unwrap();
+            }
+            
+            writer.write(b"\n\r").unwrap();
+            writer.flush().unwrap();
+            
             // Send "end" signal to the parent thread
             
             tx.send(i).unwrap();
