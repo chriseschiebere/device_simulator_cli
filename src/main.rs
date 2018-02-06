@@ -128,15 +128,14 @@ fn main() {
             // Is it possible to check if the desired Thing already exists?
             match sdk.create_thing(thing) {
                 Ok(_) => {
-                    write!(writer, "Thing \"{:}\" created.",
+                    write!(writer, "Thing \"{:}\" created.\n\r\n\r",
                         sim.thing_name).unwrap();
                 }
                 Err(_) => {
-                    write!(writer, "Thing \"{:}\" already exists.",
+                    write!(writer, "Thing \"{:}\" already exists.\n\r\n\r",
                         sim.thing_name).unwrap();
                 }
             }
-            writer.write(b"\n\r\n\r").unwrap();
             writer.flush().unwrap();
             
             // Send messages to the Cloud
