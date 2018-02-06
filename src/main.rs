@@ -32,7 +32,7 @@ fn main() {
     // START
     
     println!("\n\r*** GEENY DEVICE SIMULATOR STARTED ***\n\r");
-    println!("Start time: {}\n\r", Utc::now());
+    println!("[{}] Application started.\n\r", timestamp());
     
     // Create SDK configuration structure
     
@@ -158,8 +158,8 @@ fn main() {
                 thread::sleep(period);
                 match sdk.send_messages(&sim.thing_sn, &messages) {
                     Ok(_) =>
-                        println!("Time: {}. Message sent: {}",
-                            Utc::now(), messages[0].msg),
+                        println!("[{}] Message sent: {}",
+                            timestamp(), messages[0].msg),
                     Err(_) =>
                         println!("Failed to send messages to the Cloud."),
                 }
@@ -180,8 +180,8 @@ fn main() {
                     } else {
                         "messages"
                     };
-                    write!(writer, "Time: {}. {} {} received.\n\r",
-                        Utc::now(), messages.len(), word).unwrap();
+                    write!(writer, "[{}] {} {} received.\n\r",
+                        timestamp(), messages.len(), word).unwrap();
                 }
                 Err(_) => {
                     writer.write(b"Failed to retrieve received messages.")
@@ -212,6 +212,10 @@ fn main() {
     // FINISH
     
     thread::sleep(Duration::from_secs(2));
-    println!("Finish time: {}", Utc::now());
+    println!("[{}] Application finished.", timestamp());
     println!("\n\r*** GEENY DEVICE SIMULATOR FINISHED ***\n\r");
+}
+
+fn timestamp() -> String {
+    Utc::now().to_rfc3339()
 }
